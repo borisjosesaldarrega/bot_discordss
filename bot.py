@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 import validators
 import aiohttp
+from discord import FFmpegPCMAudio  # ✅ Importación correcta para reproducir audio
 
 # Cargar variables de entorno
 load_dotenv()
