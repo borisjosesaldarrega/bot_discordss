@@ -201,108 +201,140 @@ class Music(commands.Cog):
         else:
             await ctx.send("❌ Posición inválida")
 
-class UtilityCommands(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.model = genai.GenerativeModel("gemini-2.0-flash")
+@bot.command()  
+async def charla(ctx, *, mensaje):
+    """Interactuar con la IA de Google Gemini."""
+    user_name = ctx.author.name  # ✅ Obtiene el nombre del usuario
+    respuesta = responder_ia(mensaje, user_name)
+    await ctx.send(f'🤖 {respuesta}')
 
-    @commands.command()
-    async def charla(self, ctx, *, mensaje):
-        """Habla con la IA Gemini"""
-        user_name = ctx.author.name
-        
-        try:
-            if mensaje.lower() in ["¿cómo te llamas?", "¿quién eres?", "¿cuál es tu nombre?"]:
-                return await ctx.send("¡Soy Archeon, el asistente del servidor! 😊")
-                
-            if mensaje.lower() in ["¿quién soy?", "¿cómo me llamo?", "¿me conoces?"]:
-                return await ctx.send(f"¡Eres {user_name}! Claro que te conozco 😃")
-                
-            prompt = f"{user_name} ha dicho: {mensaje}. Responde de manera amigable y personalizada."
-            respuesta = self.model.generate_content(prompt)
-            await ctx.send(f'🤖 {respuesta.text}')
-            
-        except Exception as e:
-            await ctx.send(f'❌ Error: {str(e)}')
+def responder_ia(mensaje, user_name):
+    """Obtener respuesta de la IA de Google Gemini."""
+    try:
+        model = genai.GenerativeModel("gemini-2.0-flash")  
 
-    @commands.command()
-    async def votar(self, ctx, pregunta: str, *opciones):
-        """Crear una encuesta"""
-        emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
-        
-        if len(opciones) < 2:
-            return await ctx.send("❌ Necesitas al menos 2 opciones")
-        if len(opciones) > 6:
-            return await ctx.send("⚠️ Máximo 6 opciones")
+        # ✅ Si el usuario pregunta por el nombre del bot, responde con su nombre
+        if mensaje.lower() in ["¿cómo te llamas?", "¿quién eres?", "¿cuál es tu nombre?"]:
+            return "¡Soy Archeon, el asitente del servidor! 😊"
 
-        descripcion = "\n".join(f"{emojis[i]} {opcion}" for i, opcion in enumerate(opciones))
-        
-        embed = discord.Embed(
-            title=f"📊 {pregunta}",
-            description=descripcion,
-            color=discord.Color.gold()
-        )
-        embed.set_footer(text="Vota reaccionando con los emojis")
-        
-        msg = await ctx.send(embed=embed)
+        # ✅ Si el usuario pregunta "¿Quién soy?", responde con su nombre
+        if mensaje.lower() in ["¿quién soy?", "¿cómo me llamo?", "¿me conoces?"]:
+            return f"Tú eres {user_name}, ¡claro que te conozco! 😃"
+
+        # ✅ Genera una respuesta personalizada con el nombre del usuario
+        prompt = f"{user_name} ha dicho: {mensaje}. Responde de manera amigable y personalizada."
+        respuesta = model.generate_content(prompt)
+        return respuesta.text
+    except Exception as e:
+        return f"❌ Error al obtener respuesta de IA: {str(e)}"
+
+@bot.command()
+async def votar(ctx, pregunta: str, *opciones):
+    """Crear una encuesta con hasta 6 opciones."""
+    emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
+
+    if len(opciones) < 2:
+        await ctx.send("❌ Debes proporcionar al menos dos opciones para la encuesta.")
+        return
+    if len(opciones) > len(emojis):
+        await ctx.send("⚠️ Máximo 6 opciones permitidas.")
+        return
+
+    # Construir la descripción de la encuesta
+    descripcion = "\n".join([f"{emojis[i]} **{opcion.strip()}**" for i, opcion in enumerate(opciones)])
+
+    embed = discord.Embed(
+        title=f"📊 Encuesta: {pregunta}",
+        description=descripcion,
+        color=discord.Color.gold()
+    )
+    embed.set_footer(text="¡Vota reaccionando a los emojis!")
+
+    try:
+        mensaje = await ctx.send(embed=embed)
         for i in range(len(opciones)):
-            await msg.add_reaction(emojis[i])
+            await mensaje.add_reaction(emojis[i])
+    except Exception as e:
+        await ctx.send(f"❌ Ocurrió un error al crear la encuesta: {str(e)}")
 
-    @commands.command()
-    async def letra(self, ctx, *, cancion):
-        """Obtener letra de canción"""
-        try:
-            artista, titulo = map(str.strip, cancion.split('-', 1))
-        except ValueError:
-            return await ctx.send("❌ Formato: artista - título")
+@bot.command()
+async def letra(ctx, *, cancion):
+    """Obtener la letra de una canción en formato karaoke."""
+    try:
+        artista, titulo = map(str.strip, cancion.split('-', 1))
+    except ValueError:
+        await ctx.send("❌ Usa el formato correcto: `artista - título`")
+        return
 
-        letra = await self.obtener_letra(artista, titulo)
-        
-        if not letra or "no encontrada" in letra.lower():
-            return await ctx.send("😢 Letra no encontrada")
+    letra = await obtener_letra(artista, titulo)
+    
+    if not letra or "no encontrada" in letra.lower():
+        await ctx.send("😢 No pude encontrar la letra. Asegúrate de escribir bien el artista y título.")
+        return
 
-        for parte in [letra[i:i+1900] for i in range(0, len(letra), 1900)]:
-            await ctx.send(f"🎤 {parte}")
-            await asyncio.sleep(1)
+    partes = [letra[i:i+1900] for i in range(0, len(letra), 1900)]
+    for parte in partes:
+        await ctx.send(f"🎤 {parte}")
+        await asyncio.sleep(1)
 
-    async def obtener_letra(self, artista, titulo):
-        url = f"https://api.lyrics.ovh/v1/{artista}/{titulo}"
-        
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=10) as res:
-                    if res.status == 200:
-                        data = await res.json()
-                        return data.get('lyrics', 'Letra no encontrada').strip()
+async def obtener_letra(artista, titulo):
+    """Obtener la letra de una canción desde la API lyrics.ovh."""
+    url = f"https://api.lyrics.ovh/v1/{artista}/{titulo}"
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as res:
+                if res.status == 200:
+                    data = await res.json()
+                    letra = data.get('lyrics', '').strip()
+                    return letra if letra else "Letra no encontrada"
+                else:
                     return "Letra no encontrada"
-        except Exception as e:
-            return f"Error: {str(e)}"
+    except asyncio.TimeoutError:
+        return "⏱️ La API tardó demasiado en responder."
+    except Exception as e:
+        return f"❌ Error al obtener la letra: {str(e)}"
 
-    @commands.command(name="ayuda")
-    async def ayuda(self, ctx):
-        """Mostrar ayuda"""
-        embed = discord.Embed(
-            title="📖 Comandos disponibles",
-            color=discord.Color.blurple()
-        )
-        
-        embed.add_field(name="🎵 Música", value="""
-`¡play [url/búsqueda]` - Reproduce música
-`¡pause` - Pausa la música
-`¡continuar` - Reanuda la música
-`¡skip` - Salta la canción
-`¡cola` - Muestra la cola
-`¡remover [pos]` - Elimina una canción
-""", inline=False)
+@bot.command(name="ayuda")
+async def mostrar_ayuda(ctx):
+    """Mostrar un menú con los comandos disponibles."""
+    prefix = "¡"  # Si usas otro prefijo dinámico, reemplázalo aquí
 
-        embed.add_field(name="🧠 Utilidades", value="""
-`¡charla [mensaje]` - Habla con la IA
-`¡votar [pregunta] [opciones]` - Crea encuesta
-`¡letra artista - título` - Busca letra
-""", inline=False)
+    embed = discord.Embed(
+        title="📖 Comandos disponibles",
+        description="Aquí tienes una lista de comandos que puedes usar:",
+        color=discord.Color.blurple()
+    )
 
-        await ctx.send(embed=embed)
+    # 🎵 Comandos de música
+    embed.add_field(name="🎵 Música",
+        value=(
+            f"`{prefix}play [url]` - Reproduce música en el canal de voz\n"
+            f"`{prefix}pause` - Pausa la canción actual\n"
+            f"`{prefix}continuar` - Reanuda la música pausada\n"
+            f"`{prefix}skip` - Salta la canción actual\n"
+            f"`{prefix}remover [posición]` - Elimina una canción de la cola"
+        ),
+        inline=False
+    )
 
-# Iniciar el bot
-keep_alive()
+    # 💬 Otros comandos
+    embed.add_field(name="🧠 Chat IA", value=f"`{prefix}charla [mensaje]` - Habla con la IA de OpenAI", inline=False)
+    embed.add_field(name="📊 Encuestas", value=f"`{prefix}votar [pregunta] [opciones...]` - Crea una encuesta rápida", inline=False)
+    embed.add_field(name="🎤 Karaoke", value=f"`{prefix}letra artista - título` - Muestra la letra de una canción", inline=False)
+
+    # Pie de página
+    embed.set_footer(text="Usa el prefijo '!' antes de cada comando | Bot de música e IA")
+    embed.set_thumbnail(url=bot.user.avatar.url if bot.user.avatar else discord.Embed.Empty)
+
+    await ctx.send(embed=embed)
+
+
+# Añadir el módulo de música al bot
+async def setup_hook():
+    await bot.add_cog(Music(bot))
+
+bot.setup_hook = setup_hook
+# Ejecutar el bot
+
 bot.run(TOKEN)
