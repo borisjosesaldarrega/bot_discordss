@@ -23,6 +23,7 @@ genai.configure(api_key=GOOGLE_API_KEY)
 # Configuración de intents
 intents = discord.Intents.default()
 intents.message_content = True
+bot = commands.Bot(command_prefix="¡", intents=intents)
 
 class Music(commands.Cog):
     def __init__(self, bot):
