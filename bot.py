@@ -45,9 +45,11 @@ class Music(commands.Cog):
         ydl_opts = {
             'format': 'bestaudio/best',
             'quiet': True,
+            'geo_bypass': True,  # Evita restricciones geográficas
             'outtmpl': 'song.%(ext)s',
-        }
+            }
 
+        
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -161,9 +163,12 @@ def responder_ia(mensaje):
     """Obtener respuesta de la IA de OpenAI con la nueva API."""
     try:
         respuesta = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Cambia a gpt-3.5-turbo si no tienes acceso a gpt-4
-            messages=[{"role": "user", "content": mensaje}]
-        )
+           model="gpt-4o-mini",
+           store=True,
+           messages=[
+            {"role": "user", "content": "write a haiku about ai"}
+            ]
+        print(completion.choices[0].message);
         return respuesta.choices[0].message.content
     except Exception as e:
         return f"❌ Error al obtener respuesta de IA: {str(e)}"
