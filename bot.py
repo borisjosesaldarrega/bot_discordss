@@ -53,6 +53,7 @@ class Music(commands.Cog):
             'socket_timeout': 10,
             'sleep_interval': 15,
             'reties': 2,
+            'cookiefile': 'cookies.txt',
             'default_search': 'auto',
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
