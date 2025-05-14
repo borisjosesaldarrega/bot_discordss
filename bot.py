@@ -47,17 +47,31 @@ class Music(commands.Cog):
         self.ydl_opts = {
             'format': 'bestaudio/best',
             'quiet': True,
-            'geo_bypass': True,
+            'extract_flat': 'in_playlist',
             'noplaylist': True,
-            'extract_flat': True,
-            'socket_timeout': 30,
-            'sleep_interval': 35,
-            'reties': 2,
-            'cookiefile': 'cookies.txt',
+            'extractaudio': True,
+            'audioformat': 'mp3',
+            'nocheckcertificate': True,
+            'ignoreerrors': True,
+            'logtostderr': False,
+            'no_warnings': True,
             'default_search': 'auto',
+            'ratelimit': 200,
+            'retries': 3,
+            'socket_timeout': 30,
+            'force-ipv4': True,
+            'cookiefile': 'cookies.txt',
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'Referer': 'https://www.google.com/'
             }
+        }
+        self.ffmpeg_options = {
+             'options': '-vn -loglevel quiet',
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
         }
 
     async def reproducir(self, ctx):
@@ -87,11 +101,6 @@ class Music(commands.Cog):
                 return
 
             self.is_playing = True
-            
-            ffmpeg_options = {
-                'options': '-vn -loglevel quiet',
-                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
-            }
             
             voice.play(FFmpegPCMAudio(url2, **ffmpeg_options),
                       after=lambda e: self.bot.loop.create_task(self.siguiente(ctx)))
