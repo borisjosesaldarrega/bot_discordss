@@ -24,37 +24,27 @@ genai.configure(api_key=GOOGLE_API_KEY)
 intents = discord.Intents.default()
 intents.message_content = True
 
-class MusicBot(commands.Bot):
-    def __init__(self):
-        super().__init__(
-            command_prefix='¡',
-            intents=intents,
-            help_command=None
-        )
-    
-    async def setup_hook(self):
-        await self.add_cog(Music(self))
-        await self.add_cog(UtilityCommands(self))
-        print("✅ Extensiones cargadas")
-
-bot = MusicBot()
-
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.queue = []
         self.is_playing = False
+        self.current_song = None
         self.ydl_opts = {
             'format': 'bestaudio/best',
             'quiet': True,
             'geo_bypass': True,
             'noplaylist': True,
             'extract_flat': True,
-            'socket_timeout': 10,
+            'socket_timeout': 30,
+            'retries': 10,
+            'sleep_interval': 5,
             'default_search': 'auto',
             'source_address': '0.0.0.0',
+            'cookiefile': 'cookies.txt',
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.5'
             }
         }
 
@@ -62,49 +52,83 @@ class Music(commands.Cog):
         if not self.queue:
             await ctx.send("📭 No hay canciones en la cola")
             self.is_playing = False
+            self.current_song = None
             return
 
         url = self.queue.pop(0)
         
         try:
             with youtube_dl.YoutubeDL(self.ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                if 'entries' in info:
-                    info = info['entries'][0]
-                
-                url2 = info.get('url')
-                if not url2:
-                    raise Exception("No se pudo obtener la URL de audio")
-                
-                title = info.get('title', url)
-                duration = info.get('duration', 0)
+                try:
+                    info = ydl.extract_info(url, download=False)
+                    if not info:
+                        raise Exception("No se pudo obtener información del video")
+                    
+                    if 'entries' in info:
+                        info = info['entries'][0]
+                    
+                    url2 = info.get('url')
+                    if not url2:
+                        # Intenta con un método alternativo
+                        search_query = info.get('title', url)
+                        info = ydl.extract_info(f"ytsearch:{search_query}", download=False)
+                        if 'entries' in info:
+                            info = info['entries'][0]
+                        url2 = info.get('url')
+                        if not url2:
+                            raise Exception("No se pudo obtener la URL de audio")
+                    
+                    title = info.get('title', url)
+                    duration = info.get('duration', 0)
+                    self.current_song = {
+                        'title': title,
+                        'url': url,
+                        'duration': duration,
+                        'requested_by': ctx.author
+                    }
 
-            voice = ctx.voice_client
-            if not voice:
-                await ctx.send("⚠️ No estoy conectado a un canal de voz")
-                return
+                    voice = ctx.voice_client
+                    if not voice:
+                        await ctx.send("⚠️ No estoy conectado a un canal de voz")
+                        return
 
-            self.is_playing = True
-            
-            ffmpeg_options = {
-                'options': '-vn -loglevel quiet',
-                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
-            }
-            
-            voice.play(FFmpegPCMAudio(url2, **ffmpeg_options),
-                      after=lambda e: self.bot.loop.create_task(self.siguiente(ctx)))
+                    self.is_playing = True
+                    
+                    ffmpeg_options = {
+                        'options': '-vn -loglevel quiet',
+                        'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+                    }
+                    
+                    def after_playing(error):
+                        if error:
+                            print(f"Error en after_playing: {error}")
+                        asyncio.run_coroutine_threadsafe(self.siguiente(ctx), self.bot.loop)
+                    
+                    voice.play(FFmpegPCMAudio(url2, **ffmpeg_options), after=after_playing)
 
-            embed = discord.Embed(title="🎵 Reproduciendo", color=discord.Color.blue())
-            embed.add_field(name="Título", value=title, inline=False)
-            if duration > 0:
-                minutes, seconds = divmod(duration, 60)
-                embed.add_field(name="Duración", value=f"{minutes}:{seconds:02d}", inline=True)
-            embed.add_field(name="URL", value=f"[Link]({url})", inline=False)
-            
-            await ctx.send(embed=embed)
+                    embed = discord.Embed(title="🎵 Reproduciendo", color=discord.Color.blue())
+                    embed.add_field(name="Título", value=title, inline=False)
+                    if duration > 0:
+                        minutes, seconds = divmod(duration, 60)
+                        embed.add_field(name="Duración", value=f"{minutes}:{seconds:02d}", inline=True)
+                    embed.add_field(name="Solicitado por", value=ctx.author.mention, inline=True)
+                    embed.add_field(name="URL", value=f"[Link]({url})", inline=False)
+                    
+                    await ctx.send(embed=embed)
 
+                except youtube_dl.utils.DownloadError as e:
+                    if "Too Many Requests" in str(e):
+                        await ctx.send("⚠️ YouTube ha bloqueado temporalmente nuestras solicitudes. Por favor, espera unos minutos.")
+                    else:
+                        await ctx.send(f"❌ Error al procesar el video: {str(e)}")
+                    await self.siguiente(ctx)
+                    
+                except Exception as e:
+                    await ctx.send(f"❌ Error al reproducir: {str(e)}. Reintentando con la siguiente canción...")
+                    await self.siguiente(ctx)
+                    
         except Exception as e:
-            await ctx.send(f"❌ Error al reproducir: {str(e)}")
+            await ctx.send(f"❌ Error grave al procesar la canción: {str(e)}")
             await self.siguiente(ctx)
 
     async def siguiente(self, ctx):
@@ -113,6 +137,7 @@ class Music(commands.Cog):
         else:
             await ctx.send("📭 La cola está vacía")
             self.is_playing = False
+            self.current_song = None
 
     @commands.command(aliases=['p'])
     async def play(self, ctx, *, query):
@@ -127,6 +152,9 @@ class Music(commands.Cog):
             with youtube_dl.YoutubeDL(self.ydl_opts) as ydl:
                 info = ydl.extract_info(query, download=False)
                 
+                if not info:
+                    return await ctx.send("❌ No se pudo obtener información del video")
+                
                 if 'entries' in info:
                     entries = info['entries']
                     if not entries:
@@ -134,13 +162,18 @@ class Music(commands.Cog):
                         
                     if query.startswith('ytsearch:'):
                         entry = entries[0]
+                        if not entry:
+                            return await ctx.send("❌ No se encontró el video")
+                            
                         self.queue.append(entry['url'])
                         await ctx.send(f"🎵 Añadido a la cola: {entry.get('title', entry['url'])}")
                     else:
+                        added = 0
                         for entry in entries:
                             if entry:
                                 self.queue.append(entry['url'])
-                        await ctx.send(f"🎵 Añadidas {len(entries)} canciones a la cola")
+                                added += 1
+                        await ctx.send(f"🎵 Añadidas {added} canciones a la cola")
                 else:
                     self.queue.append(info['url'])
                     await ctx.send(f"🎵 Añadido a la cola: {info.get('title', info['url'])}")
@@ -151,14 +184,19 @@ class Music(commands.Cog):
             if not self.is_playing:
                 await self.reproducir(ctx)
                 
+        except youtube_dl.utils.DownloadError as e:
+            if "Too Many Requests" in str(e):
+                await ctx.send("⚠️ YouTube ha bloqueado temporalmente nuestras solicitudes. Por favor, espera unos minutos.")
+            else:
+                await ctx.send(f"❌ Error de YouTube: {str(e)}")
         except Exception as e:
-            await ctx.send(f"❌ Error: {str(e)}")
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
 
     @commands.command()
     async def skip(self, ctx):
         """Saltar la canción actual"""
         voice = ctx.voice_client
-        if voice and voice.is_playing():
+        if voice and (voice.is_playing() or voice.is_paused()):
             voice.stop()
             await ctx.send("⏭️ Canción saltada")
             await self.siguiente(ctx)
@@ -172,6 +210,8 @@ class Music(commands.Cog):
         if voice and voice.is_playing():
             voice.pause()
             await ctx.send("⏸️ Música pausada")
+        else:
+            await ctx.send("⚠️ No hay música reproduciéndose")
 
     @commands.command()
     async def continuar(self, ctx):
@@ -180,16 +220,36 @@ class Music(commands.Cog):
         if voice and voice.is_paused():
             voice.resume()
             await ctx.send("▶️ Música reanudada")
+        else:
+            await ctx.send("⚠️ La música no está pausada")
 
     @commands.command()
     async def cola(self, ctx):
         """Mostrar la cola de reproducción"""
-        if not self.queue:
+        if not self.queue and not self.current_song:
             await ctx.send("📭 La cola está vacía")
         else:
             embed = discord.Embed(title="🎶 Cola de reproducción", color=discord.Color.purple())
-            for i, url in enumerate(self.queue):
-                embed.add_field(name=f"{i+1}.", value=url, inline=False)
+            
+            if self.current_song:
+                duration = ""
+                if self.current_song['duration'] > 0:
+                    mins, secs = divmod(self.current_song['duration'], 60)
+                    duration = f" [{mins}:{secs:02d}]"
+                
+                embed.add_field(
+                    name="🔊 Reproduciendo ahora",
+                    value=f"**{self.current_song['title']}**{duration}\nSolicitado por: {self.current_song['requested_by'].mention}",
+                    inline=False
+                )
+            
+            if self.queue:
+                for i, url in enumerate(self.queue[:10]):  # Mostrar solo las primeras 10
+                    embed.add_field(name=f"{i+1}.", value=url, inline=False)
+                
+                if len(self.queue) > 10:
+                    embed.set_footer(text=f"Y {len(self.queue)-10} canciones más en la cola...")
+            
             await ctx.send(embed=embed)
             
     @commands.command()
@@ -201,6 +261,23 @@ class Music(commands.Cog):
         else:
             await ctx.send("❌ Posición inválida")
 
+    @commands.command()
+    async def ahora(self, ctx):
+        """Muestra la canción que se está reproduciendo actualmente"""
+        if self.current_song:
+            duration = ""
+            if self.current_song['duration'] > 0:
+                mins, secs = divmod(self.current_song['duration'], 60)
+                duration = f" [{mins}:{secs:02d}]"
+            
+            embed = discord.Embed(title="🎵 Reproduciendo ahora", color=discord.Color.green())
+            embed.add_field(name="Título", value=self.current_song['title'], inline=False)
+            embed.add_field(name="Duración", value=duration if duration else "Desconocida", inline=True)
+            embed.add_field(name="Solicitado por", value=self.current_song['requested_by'].mention, inline=True)
+            embed.add_field(name="URL", value=f"[Link]({self.current_song['url']})", inline=False)
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send("⚠️ No hay ninguna canción reproduciéndose")
 @bot.command()  
 async def charla(ctx, *, mensaje):
     """Interactuar con la IA de Google Gemini."""
