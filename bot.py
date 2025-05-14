@@ -10,6 +10,9 @@ import validators
 import aiohttp
 from discord import FFmpegPCMAudio  # ✅ Importación correcta para reproducir audio
 
+# Instalar ffmpeg antes de iniciar el bot (solo si no está instalado)
+os.system("apt-get update && apt-get install -y ffmpeg")
+
 # Cargar variables de entorno
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
