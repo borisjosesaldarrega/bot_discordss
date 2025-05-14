@@ -34,46 +34,62 @@ class Music(commands.Cog):
         self.is_playing = False  # Para evitar bloqueos en la reproducción
 
     async def reproducir(self, ctx):
-        if not self.queue:
-            await ctx.send("📭 No hay canciones en la cola.")
+    if not self.queue:
+        await ctx.send("📭 No hay canciones en la cola.")
+        self.is_playing = False
+        return
+
+    url = self.queue.pop(0)
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'geo_bypass': True,
+        'geo': 'MX',  # Cambia esto según tu región
+        'outtmpl': 'song.%(ext)s',
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            url2 = info.get('url')
+
+        if not url2:
+            await ctx.send("⚠️ No se pudo obtener la URL del audio.")
             self.is_playing = False
             return
 
-        url = self.queue.pop(0)
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'quiet': True,
-            'geo_bypass': True,  # Evita restricciones geográficas
-            'geo': 'MX',
-            'outtmpl': 'song.%(ext)s',
-            }
+        voice = ctx.voice_client
 
-        
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                url2 = info.get('url')
-
-            if not url2:
-                await ctx.send("⚠️ No se pudo obtener la URL del audio.")
-                self.is_playing = False
-                return
-
-            voice = ctx.voice_client
-
-            if not voice:
-                await ctx.send("⚠️ No estoy conectado a un canal de voz.")
-                self.is_playing = False
-                return
-
-            self.is_playing = True
-            voice.play(discord.FFmpegPCMAudio(url2), 
-                       after=lambda e: self.bot.loop.create_task(self.siguiente(ctx)))
-            await ctx.send(f"🎵 Reproduciendo: {url}")
-
-        except Exception as e:
-            await ctx.send(f"❌ Error al reproducir la canción: {str(e)}")
+        if not voice:
+            await ctx.send("⚠️ No estoy conectado a un canal de voz.")
             self.is_playing = False
+            return
+
+        self.is_playing = True
+        voice.play(discord.FFmpegPCMAudio(url2), 
+                   after=lambda e: self.bot.loop.create_task(self.siguiente(ctx)))
+        await ctx.send(f"🎵 Reproduciendo: {url}")
+
+    except Exception as e:
+        await ctx.send(f"❌ Error al reproducir la canción: {str(e)}")
+        self.is_playing = False
+
+@commands.command()
+async def play(self, ctx, url: str):
+    """Añadir una canción a la cola y reproducirla."""
+    if not validators.url(url):
+        await ctx.send("❌ La URL proporcionada no es válida.")
+        return
+
+    self.queue.append(url)
+    await ctx.send(f"🎵 Añadido a la cola: {url}")
+
+    if not ctx.voice_client:
+        await self.entrar(ctx)
+
+    if not self.is_playing:
+        await self.reproducir(ctx)
+
 
     async def siguiente(self, ctx):
         if self.queue:
@@ -101,13 +117,6 @@ class Music(commands.Cog):
             await ctx.send("👋 Desconectado y cola borrada.")
         else:
             await ctx.send("⚠️ No estoy conectado a ningún canal de voz.")
-
-    @commands.command()
-    async def play(self, ctx, url: str):
-        """Añadir una canción a la cola y reproducirla."""
-        if not validators.url(url):
-            await ctx.send("❌ La URL proporcionada no es válida.")
-            return
 
         self.queue.append(url)
         await ctx.send(f"🎵 Añadido a la cola: {url}")
@@ -161,7 +170,7 @@ async def charla(ctx, *, mensaje):
 def responder_ia(mensaje):
     """Obtener respuesta de la IA de Google Gemini."""
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")  # Usa "gemini-pro" para respuestas avanzadas
+        model = genai.GenerativeModel("gemini-2.0-flash") 
         respuesta = model.generate_content(mensaje)
         return respuesta.text
     except Exception as e:
