@@ -33,7 +33,7 @@ class Music(commands.Cog):
         self.queue = []
         self.is_playing = False  # Para evitar bloqueos en la reproducción
 
-    async def reproducir(self, ctx):
+    async def reproducir(self, ctx, region='MX'):
         if not self.queue:
             await ctx.send("📭 No hay canciones en la cola.")
             self.is_playing = False
@@ -44,10 +44,10 @@ class Music(commands.Cog):
             'format': 'bestaudio/best',
             'quiet': True,
             'geo_bypass': True,  # Evita restricciones geográficas
-            'geo': 'MX',
+            'geo': region,  # Establece la región
             'outtmpl': 'song.%(ext)s',
         }
-        
+
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -70,26 +70,12 @@ class Music(commands.Cog):
                        after=lambda e: self.bot.loop.create_task(self.siguiente(ctx)))
             await ctx.send(f"🎵 Reproduciendo: {url}")
 
-        except Exception as e:
-            await ctx.send(f"❌ Error al reproducir la canción: {str(e)}")
+        except yt_dlp.utils.ExtractorError as e:
+            await ctx.send(f"❌ Error al reproducir la canción: {str(e)}. El video puede no estar disponible.")
             self.is_playing = False
-
-@commands.command()
-async def play(self, ctx, url: str):
-    """Añadir una canción a la cola y reproducirla."""
-    if not validators.url(url):
-        await ctx.send("❌ La URL proporcionada no es válida.")
-        return
-
-    self.queue.append(url)
-    await ctx.send(f"🎵 Añadido a la cola: {url}")
-
-    if not ctx.voice_client:
-        await self.entrar(ctx)
-
-    if not self.is_playing:
-        await self.reproducir(ctx)
-
+        except Exception as e:
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
+            self.is_playing = False
 
     async def siguiente(self, ctx):
         if self.queue:
@@ -118,6 +104,13 @@ async def play(self, ctx, url: str):
         else:
             await ctx.send("⚠️ No estoy conectado a ningún canal de voz.")
 
+    @commands.command()
+    async def play(self, ctx, url: str, region: str = 'MX'):
+        """Añadir una canción a la cola y reproducirla."""
+        if not validators.url(url):
+            await ctx.send("❌ La URL proporcionada no es válida.")
+            return
+
         self.queue.append(url)
         await ctx.send(f"🎵 Añadido a la cola: {url}")
 
@@ -125,7 +118,7 @@ async def play(self, ctx, url: str):
             await self.entrar(ctx)
 
         if not self.is_playing:
-            await self.reproducir(ctx)
+            await self.reproducir(ctx, region)
 
     @commands.command()
     async def skip(self, ctx):
@@ -153,7 +146,7 @@ async def play(self, ctx, url: str):
     async def cola(self, ctx):
         """Mostrar la cola de reproducción."""
         if not self.queue:
-            await ctx.send("📭 La cola está vacía.")
+            await ctx.send("📭 La cola está vacía")
         else:
             embed = discord.Embed(title="🎶 Cola de reproducción", color=discord.Color.purple())
             for i, url in enumerate(self.queue):
