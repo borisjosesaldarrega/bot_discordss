@@ -231,7 +231,10 @@ async def ayuda(ctx):
 
 
 # Añadir el módulo de música al bot
-bot.add_cog(Music(bot))
+async def setup():
+    await bot.add_cog(Music(bot))
+
+bot.loop.create_task(setup())
 
 # Ejecutar el bot
 bot.run(TOKEN)
