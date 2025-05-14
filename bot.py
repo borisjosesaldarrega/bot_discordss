@@ -156,16 +156,16 @@ async def charla(ctx, *, mensaje):
     await ctx.send(f'🤖 {respuesta}')
 
 def responder_ia(mensaje):
-    """Obtener respuesta de la IA de OpenAI con manejo de errores."""
+    """Obtener respuesta de la IA de OpenAI con la nueva API."""
     try:
-        respuesta = openai.ChatCompletion.create(
+        respuesta = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": mensaje}]
         )
-        return respuesta.choices[0].message['content']
+        return respuesta.choices[0].message.content
     except Exception as e:
         return f"❌ Error al obtener respuesta de IA: {str(e)}"
-
+        
 # Comando: Encuesta
 @bot.command()
 async def votar(ctx, pregunta, *opciones):
