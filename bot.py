@@ -15,6 +15,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Configurar OpenAI API Key
 openai.api_key = OPENAI_API_KEY
+# Inicializar el cliente de OpenAI
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 # Configuración de intents
 intents = discord.Intents.default()
@@ -236,4 +238,5 @@ async def setup_hook():
 
 bot.setup_hook = setup_hook
 # Ejecutar el bot
+
 bot.run(TOKEN)
