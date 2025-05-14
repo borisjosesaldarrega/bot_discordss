@@ -163,16 +163,13 @@ def responder_ia(mensaje):
     """Obtener respuesta de la IA de OpenAI con la nueva API."""
     try:
         respuesta = client.chat.completions.create(
-           model="gpt-4o-mini",
-           store=True,
-           messages=[
-            {"role": "user", "content": "write a haiku about ai"}
-            ]
-        print(completion.choices[0].message);
+            model="gpt-4o-mini",  # Usa "gpt-3.5-turbo" si no tienes acceso a GPT-4
+            messages=[{"role": "user", "content": mensaje}]
+        )
+        print(respuesta.choices[0].message.content)  # Muestra la respuesta en consola
         return respuesta.choices[0].message.content
     except Exception as e:
         return f"❌ Error al obtener respuesta de IA: {str(e)}"
-
         
 # Comando: Encuesta
 @bot.command()
