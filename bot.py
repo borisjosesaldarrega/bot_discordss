@@ -34,45 +34,45 @@ class Music(commands.Cog):
         self.is_playing = False  # Para evitar bloqueos en la reproducción
 
     async def reproducir(self, ctx):
-    if not self.queue:
-        await ctx.send("📭 No hay canciones en la cola.")
-        self.is_playing = False
-        return
-
-    url = self.queue.pop(0)
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'quiet': True,
-        'geo_bypass': True,
-        'geo': 'MX',  # Cambia esto según tu región
-        'outtmpl': 'song.%(ext)s',
-    }
-
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            url2 = info.get('url')
-
-        if not url2:
-            await ctx.send("⚠️ No se pudo obtener la URL del audio.")
+        if not self.queue:
+            await ctx.send("📭 No hay canciones en la cola.")
             self.is_playing = False
             return
 
-        voice = ctx.voice_client
+        url = self.queue.pop(0)
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'quiet': True,
+            'geo_bypass': True,  # Evita restricciones geográficas
+            'geo': 'MX',
+            'outtmpl': 'song.%(ext)s',
+        }
+        
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                url2 = info.get('url')
 
-        if not voice:
-            await ctx.send("⚠️ No estoy conectado a un canal de voz.")
+            if not url2:
+                await ctx.send("⚠️ No se pudo obtener la URL del audio.")
+                self.is_playing = False
+                return
+
+            voice = ctx.voice_client
+
+            if not voice:
+                await ctx.send("⚠️ No estoy conectado a un canal de voz.")
+                self.is_playing = False
+                return
+
+            self.is_playing = True
+            voice.play(discord.FFmpegPCMAudio(url2), 
+                       after=lambda e: self.bot.loop.create_task(self.siguiente(ctx)))
+            await ctx.send(f"🎵 Reproduciendo: {url}")
+
+        except Exception as e:
+            await ctx.send(f"❌ Error al reproducir la canción: {str(e)}")
             self.is_playing = False
-            return
-
-        self.is_playing = True
-        voice.play(discord.FFmpegPCMAudio(url2), 
-                   after=lambda e: self.bot.loop.create_task(self.siguiente(ctx)))
-        await ctx.send(f"🎵 Reproduciendo: {url}")
-
-    except Exception as e:
-        await ctx.send(f"❌ Error al reproducir la canción: {str(e)}")
-        self.is_playing = False
 
 @commands.command()
 async def play(self, ctx, url: str):
