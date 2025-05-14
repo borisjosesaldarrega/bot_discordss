@@ -11,8 +11,7 @@ import validators
 # Cargar variables de entorno
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-load_dotenv()
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Eliminé la segunda llamada a load_dotenv()
 
 # Configurar Google AI
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -27,7 +26,7 @@ bot = commands.Bot(command_prefix='¡', intents=intents)
 @bot.event
 async def on_ready():
     print(f'✅ Bot conectado como {bot.user}')
-
+    
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -152,7 +151,7 @@ class Music(commands.Cog):
             await ctx.send(embed=embed)
 
 # Comando: con IA
-@@bot.command()
+@bot.command()  # ✅ Corrección: Eliminé el doble "@"
 async def charla(ctx, *, mensaje):
     """Interactuar con la IA de Google Gemini."""
     respuesta = responder_ia(mensaje)
