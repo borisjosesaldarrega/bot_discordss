@@ -31,3 +31,4 @@ urllib3==2.4.0
 validators==0.35.0
 yarl==1.20.0
 yt-dlp==2025.4.30
+PyNaCl
