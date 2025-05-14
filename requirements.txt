@@ -22,3 +22,4 @@ yarl==1.20.0
 yt-dlp==2025.4.30
 PyNaCl==1.5.0
 keep_alive  # ✅ Agregado porque lo usas en tu código
+flask
