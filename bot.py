@@ -174,7 +174,7 @@ def responder_ia(mensaje, user_name):
 
         # ✅ Si el usuario pregunta por el nombre del bot, responde con su nombre
         if mensaje.lower() in ["¿cómo te llamas?", "¿quién eres?", "¿cuál es tu nombre?"]:
-            return "¡Soy Archeon! 😊"
+            return "¡Soy Archeon, el asitente del servidor! 😊"
 
         # ✅ Si el usuario pregunta "¿Quién soy?", responde con su nombre
         if mensaje.lower() in ["¿quién soy?", "¿cómo me llamo?", "¿me conoces?"]:
