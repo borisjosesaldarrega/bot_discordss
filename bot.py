@@ -161,7 +161,7 @@ async def charla(ctx, *, mensaje):
 def responder_ia(mensaje):
     """Obtener respuesta de la IA de Google Gemini."""
     try:
-        model = genai.GenerativeModel("gemini-pro")  # Usa "gemini-pro" para respuestas avanzadas
+        model = genai.GenerativeModel("gemini-2.0-flash")  # Usa "gemini-pro" para respuestas avanzadas
         respuesta = model.generate_content(mensaje)
         return respuesta.text
     except Exception as e:
