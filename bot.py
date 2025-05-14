@@ -44,6 +44,7 @@ class Music(commands.Cog):
             'format': 'bestaudio/best',
             'quiet': True,
             'geo_bypass': True,  # Evita restricciones geográficas
+            'geo': 'MX',
             'outtmpl': 'song.%(ext)s',
             }
 
