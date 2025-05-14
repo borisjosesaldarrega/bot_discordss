@@ -5,18 +5,17 @@ import os
 import requests
 import asyncio
 from dotenv import load_dotenv
-import openai
+import google.generativeai as genai
 import validators
 
 # Cargar variables de entorno
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# Configurar OpenAI API Key
-openai.api_key = OPENAI_API_KEY
-# Inicializar el cliente de OpenAI
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+# Configurar Google AI
+genai.configure(api_key=GOOGLE_API_KEY)
 
 # Configuración de intents
 intents = discord.Intents.default()
@@ -152,22 +151,19 @@ class Music(commands.Cog):
                 embed.add_field(name=f"{i+1}.", value=url, inline=False)
             await ctx.send(embed=embed)
 
-# Comando: IA con OpenAI GPT-4
-@bot.command()
+# Comando: con IA
+@@bot.command()
 async def charla(ctx, *, mensaje):
-    """Interactuar con la IA de OpenAI."""
+    """Interactuar con la IA de Google Gemini."""
     respuesta = responder_ia(mensaje)
     await ctx.send(f'🤖 {respuesta}')
 
 def responder_ia(mensaje):
-    """Obtener respuesta de la IA de OpenAI con la nueva API."""
+    """Obtener respuesta de la IA de Google Gemini."""
     try:
-        respuesta = client.chat.completions.create(
-            model="gpt-4o-mini",  # Usa "gpt-3.5-turbo" si no tienes acceso a GPT-4
-            messages=[{"role": "user", "content": mensaje}]
-        )
-        print(respuesta.choices[0].message.content)  # Muestra la respuesta en consola
-        return respuesta.choices[0].message.content
+        model = genai.GenerativeModel("gemini-pro")  # Usa "gemini-pro" para respuestas avanzadas
+        respuesta = model.generate_content(mensaje)
+        return respuesta.text
     except Exception as e:
         return f"❌ Error al obtener respuesta de IA: {str(e)}"
         
