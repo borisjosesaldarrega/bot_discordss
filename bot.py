@@ -160,21 +160,33 @@ async def play(self, ctx, url: str):
                 embed.add_field(name=f"{i+1}.", value=url, inline=False)
             await ctx.send(embed=embed)
 
-# Comando: con IA
-@bot.command()  # ✅ Corrección: Eliminé el doble "@"
+@bot.command()  
 async def charla(ctx, *, mensaje):
     """Interactuar con la IA de Google Gemini."""
-    respuesta = responder_ia(mensaje)
+    user_name = ctx.author.name  # ✅ Obtiene el nombre del usuario
+    respuesta = responder_ia(mensaje, user_name)
     await ctx.send(f'🤖 {respuesta}')
 
-def responder_ia(mensaje):
+def responder_ia(mensaje, user_name):
     """Obtener respuesta de la IA de Google Gemini."""
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash") 
-        respuesta = model.generate_content(mensaje)
+        model = genai.GenerativeModel("gemini-2.0-flash")  
+
+        # ✅ Si el usuario pregunta por el nombre del bot, responde con su nombre
+        if mensaje.lower() in ["¿cómo te llamas?", "¿quién eres?", "¿cuál es tu nombre?"]:
+            return "¡Soy Archeon! 😊"
+
+        # ✅ Si el usuario pregunta "¿Quién soy?", responde con su nombre
+        if mensaje.lower() in ["¿quién soy?", "¿cómo me llamo?", "¿me conoces?"]:
+            return f"Tú eres {user_name}, ¡claro que te conozco! 😃"
+
+        # ✅ Genera una respuesta personalizada con el nombre del usuario
+        prompt = f"{user_name} ha dicho: {mensaje}. Responde de manera amigable y personalizada."
+        respuesta = model.generate_content(prompt)
         return respuesta.text
     except Exception as e:
         return f"❌ Error al obtener respuesta de IA: {str(e)}"
+
         
 # Comando: Encuesta
 @bot.command()
