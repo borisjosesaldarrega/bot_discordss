@@ -605,7 +605,6 @@ async def on_command_error(ctx, error):
 @bot.event
 async def on_ready():
     await bot.tree.sync()  
-bot.run(TOKEN)import discord
 from discord.ext import commands
 import yt_dlp as youtube_dl
 import asyncio
@@ -1212,6 +1211,4 @@ async def on_command_error(ctx, error):
 @bot.event
 async def on_ready():
     await bot.tree.sync()  
-
-if __name__ == '__main__':
     bot.run(TOKEN)
