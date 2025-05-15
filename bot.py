@@ -220,7 +220,7 @@ async def play(ctx, *, busqueda: str):
             FFMPEG_OPTIONS = {
                 'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -loglevel warning',
                 'options': '-vn -c:a libopus -b:a 128k -ar 48000 -ac 2 -filter:a "volume=0.8"',
-                'executable': 'ffmpeg
+                'executable': 'ffmpeg'
             }
             
             # Crear objeto canción completo para la cola
