@@ -9,12 +9,53 @@ import validators
 import traceback
 import logging
 import subprocess
+import requests
+import stat
 
-try:
-    subprocess.run(['ffmpeg', '-version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-except:
-    print("⚠️ Advertencia: FFmpeg no está instalado correctamente")
-    
+def setup_ffmpeg():
+    try:
+        # Verificar si FFmpeg ya está disponible
+        subprocess.run(['ffmpeg', '-version'], check=True, 
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return True
+    except:
+        try:
+            print("🔍 FFmpeg no encontrado. Descargando versión estática...")
+            
+            # 1. Descargar FFmpeg
+            ffmpeg_url = "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+            response = requests.get(ffmpeg_url, timeout=30)
+            with open("ffmpeg.tar.xz", "wb") as f:
+                f.write(response.content)
+            
+            # 2. Descomprimir
+            os.system("tar -xf ffmpeg.tar.xz")
+            
+            # 3. Buscar el directorio descomprimido
+            ffmpeg_dir = next(d for d in os.listdir() 
+                            if d.startswith('ffmpeg-') and 'static' in d)
+            
+            # 4. Configurar permisos y PATH
+            ffmpeg_path = f"{ffmpeg_dir}/ffmpeg"
+            st = os.stat(ffmpeg_path)
+            os.chmod(ffmpeg_path, st.st_mode | stat.S_IEXEC)
+            os.environ["PATH"] += os.pathsep + os.path.abspath(ffmpeg_dir)
+            
+            print("✅ FFmpeg instalado correctamente")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error crítico: {str(e)}")
+            return False
+
+# --- Verificación inicial --- (esto va FUERA de la función)
+if not setup_ffmpeg():
+    print("⚠️ Advertencia crítica: No se pudo configurar FFmpeg. Los comandos de música no funcionarán.")
+else:
+    print("✅ FFmpeg está listo para usar")
+
+
+logging.basicConfig(level=logging.WARNING)
 logging.basicConfig(level=logging.WARNING) 
 # Configuración inicial
 logging.basicConfig(
@@ -81,7 +122,6 @@ async def check_queue(ctx):
         FFMPEG_OPTIONS = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -loglevel warning',
             'options': '-vn -c:a libopus -b:a 128k -ar 48000 -ac 2 -filter:a "volume=0.8"',
-            'executable': r"C:\ProgramData\chocolatey\bin\ffmpeg.exe"
         }
         
         try:
