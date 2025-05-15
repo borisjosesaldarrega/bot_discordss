@@ -1212,4 +1212,6 @@ async def on_command_error(ctx, error):
 @bot.event
 async def on_ready():
     await bot.tree.sync()  
-bot.run(TOKEN)
+
+if __name__ == '__main__':
+    bot.run(TOKEN)
