@@ -200,8 +200,14 @@ async def play(ctx, *, busqueda: str):
                 download=False
             )
             
+            # Verificar si se obtuvo información válida
+            if info is None:
+                return await ctx.send("❌ No se pudo obtener información del video. ¿El enlace es válido?")
+            
             # Si es una búsqueda, tomar el primer resultado
             if 'entries' in info:
+                if not info['entries']:
+                    return await ctx.send("🔍 No se encontraron resultados para tu búsqueda")
                 info = info['entries'][0]
             
             # Obtener la URL de audio directamente
@@ -209,13 +215,21 @@ async def play(ctx, *, busqueda: str):
                 url2 = info['url']
             else:
                 # Buscar el mejor formato de audio
+                if 'formats' not in info:
+                    return await ctx.send("❌ No se encontraron formatos de audio disponibles")
+                
                 format = next(
                     (f for f in info['formats'] 
                     if f.get('acodec') != 'none'),
-                    info['formats'][0]
+                    None
                 )
+                
+                if format is None:
+                    return await ctx.send("❌ No se encontró un formato de audio adecuado")
+                
                 url2 = format['url']
             
+            # Resto del código permanece igual...
             # Configuración de FFmpeg
             FFMPEG_OPTIONS = {
                 'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -loglevel warning',
