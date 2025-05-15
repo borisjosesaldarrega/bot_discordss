@@ -643,4 +643,4 @@ async def on_command_error(ctx, error):
     logger.error(f'Error en comando {ctx.command}: {error}')
     await ctx.send(f'⚠️ Ocurrió un error: {str(error)}')
 
-    bot.run(TOKEN)
+bot.run(TOKEN)
