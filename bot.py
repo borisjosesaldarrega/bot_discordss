@@ -107,8 +107,15 @@ ydl_opts = {
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
     'nocheckcertificate': True,
-    'source_address': '0.0.0.0'
+    'source_address': '0.0.0.0',
+    'extractor_args': {
+        'youtube': {
+            'skip': ['dash', 'hls'],
+            'player_client': ['android', 'web']
+        }
+    }
 }
+
 
 # Variables de estado
 queues = {}
